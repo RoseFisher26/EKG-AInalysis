@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Catch-all deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidTimestamp(ts) { return ts == request.time || ts is int; } // int for demo simplicity if they send ms
+
+    // Entity Validations
+    function isValidPatient(data) {
+      return data.keys().hasAll(['firstName', 'lastName', 'dateOfBirth', 'gender', 'medicalHistory', 'createdAt', 'ownerId'])
+        && data.firstName is string && data.firstName.size() <= 100
+        && data.lastName is string && data.lastName.size() <= 100
+        && data.dateOfBirth is string
+        && data.gender is string
+        && data.ownerId == request.auth.uid;
+    }
+
+    function isValidEKGRecord(data) {
+      return data.keys().hasAll(['patientId', 'imageUrl', 'analysis', 'notes', 'createdAt', 'ownerId'])
+        && data.patientId is string
+        && data.imageUrl is string && data.imageUrl.size() <= 2000000 // 2MB base64 limit roughly
+        && data.analysis is map
+        && data.ownerId == request.auth.uid;
+    }
+
+    // --- Collections ---
+
+    match /patients/{patientId} {
+      allow get: if isOwner(existing().ownerId);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      
+      allow create: if isSignedIn() && isValidId(patientId) && isValidPatient(incoming()) 
+        && incoming().ownerId == request.auth.uid;
+        
+      allow update: if isOwner(existing().ownerId) && isValidPatient(incoming())
+        && incoming().ownerId == existing().ownerId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['firstName', 'lastName', 'medicalHistory', 'dateOfBirth']);
+        
+      allow delete: if isOwner(existing().ownerId);
+    }
+
+    match /ekg_records/{recordId} {
+      allow get: if isOwner(existing().ownerId);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+      allow create: if isSignedIn() && isValidId(recordId) && isValidEKGRecord(incoming())
+        && incoming().ownerId == request.auth.uid
+        && get(/databases/$(database)/documents/patients/$(incoming().patientId)).data.ownerId == request.auth.uid;
+
+      allow update: if isOwner(existing().ownerId) && isValidEKGRecord(incoming())
+        && incoming().ownerId == existing().ownerId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['notes']);
+
+      allow delete: if isOwner(existing().ownerId);
+    }
+  }
+}

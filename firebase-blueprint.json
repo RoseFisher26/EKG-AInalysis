@@ -1,0 +1,43 @@
+{
+  "entities": {
+    "Patient": {
+      "title": "Patient",
+      "description": "Represents a patient record including medical history.",
+      "type": "object",
+      "properties": {
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "dateOfBirth": { "type": "string" },
+        "gender": { "type": "string" },
+        "medicalHistory": { "type": "string" },
+        "createdAt": { "type": "integer" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["firstName", "lastName", "dateOfBirth", "gender", "createdAt", "ownerId"]
+    },
+    "EKGRecord": {
+      "title": "EKGRecord",
+      "description": "An EKG analysis record for a specific patient.",
+      "type": "object",
+      "properties": {
+        "patientId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "analysis": { "type": "object" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "integer" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["patientId", "imageUrl", "analysis", "createdAt", "ownerId"]
+    }
+  },
+  "firestore": {
+    "/patients/{patientId}": {
+      "schema": "Patient",
+      "description": "Patient directory"
+    },
+    "/ekg_records/{recordId}": {
+      "schema": "EKGRecord",
+      "description": "Analysis logs"
+    }
+  }
+}

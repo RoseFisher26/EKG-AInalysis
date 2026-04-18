@@ -1,0 +1,6 @@
+{
+  "name": "CardiaScan AI - EKG Analysis Suite",
+  "description": "A comprehensive clinical support tool for EKG interpretation, featuring AI-powered image analysis, real-time waveform visualization, and patient data management.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": []
+}
